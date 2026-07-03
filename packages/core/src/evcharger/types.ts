@@ -42,3 +42,21 @@ export type ParseError =
 export type ParseResult<T> =
   | { ok: true; header: ResponseHeader; items: T[]; skipped: SkippedItem[] }
   | { ok: false; error: ParseError };
+
+export type UiChargerStatus = "waiting" | "charging" | "other" | "unknown";
+
+export type ChargerSpeed = "fast" | "slow" | "unknown";
+
+export interface StatusDiffEntry {
+  statId: string;
+  chgerId: string;
+  prevStat: number | null;
+  nextStat: number;
+  statUpdDt: string;
+}
+
+export interface StatusDiffResult {
+  changed: StatusDiffEntry[];
+  unchanged: StatusDiffEntry[];
+  new: StatusDiffEntry[];
+}

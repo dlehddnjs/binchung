@@ -48,11 +48,11 @@
 | 6 | 예약중 | 주황 |
 | 9 | 상태미확인 | 회색 |
 
-→ `mapStatToUiStatus`는 이 8개 + 그 외 값(방어적 UNKNOWN) 전부를 테스트로 고정.
+→ `mapStatToUiStatus(stat: number): "waiting" | "charging" | "other" | "unknown"`는 이 8개 + 그 외 값(방어적 UNKNOWN) 전부를 테스트로 고정. stat=6(예약중)은 색상표상 stat=3(충전중)과 동일(주황)이라 "charging" 버킷에 병합 — §1의 "대기/충전중/기타" 3버킷 프레이밍과 일치시킴(이슈 #3, 2026-07-03).
 
 ### 충전기 타입 (chgerType) ✅ 활용가이드 v1.23 확정
 `01` DC차데모, `02` AC완속, `03` DC차데모+AC3상, `04` DC콤보, `05` DC차데모+DC콤보, `06` DC차데모+AC3상+DC콤보, `07` AC3상, `08` DC콤보(완속), `09` NACS, `10` DC콤보+NACS, `11` DC콤보2(버스전용)
-→ 급속/완속 판정: `02`(AC완속), `08`(DC콤보 완속)만 완속, 나머지는 급속. 도메인 함수 `isFastCharger(chgerType)`으로 캡슐화 (테스트 대상 1호). NACS 포함 신규 코드 추가 이력이 있으니 미지 코드는 UNKNOWN 처리.
+→ 급속/완속 판정: `02`(AC완속), `08`(DC콤보 완속)만 완속, 나머지는 급속. 도메인 함수 `classifyChargerSpeed(chgerType: string): "fast" | "slow" | "unknown"`으로 캡슐화 (테스트 대상 1호). NACS 포함 신규 코드 추가 이력이 있으니 미지 코드는 UNKNOWN 처리. ⚠️ **함수명 변경 이력(이슈 #3, 2026-07-03)**: 원래 `isFastCharger(chgerType): boolean`으로 계획했으나, `boolean`/`boolean | null`은 미지값을 falsy(=slow)로 오독할 위험이 있어 3값 문자열 union + 이름 변경으로 확정.
 
 ---
 
@@ -107,7 +107,7 @@
 ```
 
 - **모노레포 (pnpm workspace)**: `apps/web`, `apps/collector`, `packages/core`
-- `packages/core`: 도메인 타입 + 순수 함수 (API 응답 파서, stat 매핑, diff 계산, isFastCharger). **TDD의 주전장. 프레임워크 의존 금지.**
+- `packages/core`: 도메인 타입 + 순수 함수 (API 응답 파서, stat 매핑, diff 계산, classifyChargerSpeed). **TDD의 주전장. 프레임워크 의존 금지.**
 - Phase 1 프론트는 폴링(60초, SWR 또는 TanStack Query)으로 현재 상태 갱신. WebSocket은 Phase 2에서 이 자리에 끼워 넣는다 — 인터페이스를 `StatusFeed` 추상으로 정의해 교체 가능하게.
 
 ### 배포
@@ -186,7 +186,7 @@ CREATE INDEX idx_history_charger_time ON status_history(stat_id, chger_id, recor
 - **도구**: Vitest, @testing-library/react, msw(환경부 API 목킹)
 - **test-first 필수 영역** (`packages/core`):
   - `parseChargerInfoResponse` / `parseChargerStatusResponse` — 정상/필드누락/빈목록/에러코드 응답
-  - `isFastCharger(chgerType)`
+  - `classifyChargerSpeed(chgerType)` (구 `isFastCharger`, §2 참고)
   - `mapStatToUiStatus(stat)`
   - `computeStatusDiff(current, incoming)` — 변화 감지, 동일상태 재보고, 신규 충전기
   - `RequestBudget` — 일일 카운터, 90% 완화, 자정 리셋(타임존 KST 주의)
@@ -227,7 +227,7 @@ Phase 1을 이슈 단위로 분해. 각 이슈는 반나절~1일 스코프.
 |---|---|---|
 | 1 | 리포 부트스트랩: pnpm workspace, TS strict, eslint/prettier, Vitest, CI | 빈 3패키지 + 초록 CI |
 | 2 | API 픽스처 확보 + `packages/core` 파서 (test-first) | parse 함수 + 테스트 |
-| 3 | 도메인 함수: stat 매핑, isFastCharger, computeStatusDiff (test-first) | core 완성 |
+| 3 | 도메인 함수: stat 매핑, classifyChargerSpeed, computeStatusDiff (test-first) | core 완성 |
 | 4 | DB 스키마 마이그레이션 + 로컬 docker-compose | migration SQL |
 | 5 | collector: full sync 1회 실행 → stations/chargers 적재 | 전국 데이터 in DB |
 | 6 | collector: 델타 폴링 루프 + RequestBudget + diff→history 적재 | 5분 주기 가동 |

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      # 로컬 개발 전용 더미 자격증명 — 실제 프로덕션 시크릿 아님, 커밋 가능
+      POSTGRES_USER: binchung
+      POSTGRES_PASSWORD: binchung_dev_only_password
+      POSTGRES_DB: binchung
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U binchung -d binchung"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

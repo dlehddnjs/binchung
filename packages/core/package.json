@@ -10,5 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^5.9.3"
   }
 }

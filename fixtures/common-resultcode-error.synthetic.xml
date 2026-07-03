@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  synthetic fixture, NOT a real API call.
+  실호출로 resultCode≠00 XML 에러 응답을 재현하지 못해(관측된 에러는 전부 401/504 비XML 인프라 실패)
+  data.go.kr 활용가이드 부록의 공통 resultCode 표를 근거로 손으로 작성함.
+  envelope 구조(response/header/resultCode/resultMsg)는 실측된 getChargerInfo-normal.xml,
+  getChargerStatus-normal.xml과 동일 — resultCode 값과 body만 에러 케이스로 교체.
+-->
+<response><header><resultCode>22</resultCode><resultMsg>LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR</resultMsg></header><body></body></response>

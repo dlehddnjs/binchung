@@ -8,6 +8,7 @@
 apps/web        Next.js 15 App Router (지도 UI)
 apps/collector  Node 워커 (수집 파이프라인)
 packages/core   도메인 타입 + 순수 함수 (프레임워크 의존 절대 금지)
+packages/db     DB 마이그레이션(SQL 파일) + 스키마. apps/web·apps/collector가 공유
 docs/           설계 문서, 회고
 fixtures/       환경부 API 응답 원문 (테스트 픽스처)
 ```
@@ -36,6 +37,9 @@ pnpm -r typecheck
 pnpm -r lint
 pnpm --filter web dev
 pnpm --filter collector dev   # 로컬은 fixtures 모드 기본
+docker compose up -d --wait   # 로컬 Postgres
+pnpm --filter @binchung/db migrate:up
+pnpm --filter @binchung/db migrate:down
 ./verify.sh           # lint + typecheck + test + build 일괄
 ```
 
@@ -44,7 +48,7 @@ pnpm --filter collector dev   # 로컬은 fixtures 모드 기본
 - 지도: OpenLayers `ol` (Leaflet/Mapbox 쓰지 않는다 — 채용공고 정렬 목적의 의도적 선택)
 - 데이터 fetching: TanStack Query (Phase 1은 60초 폴링; Phase 2에서 `StatusFeed` 인터페이스 뒤로 WebSocket 교체 예정 — 이 추상을 우회하지 마라)
 - 테스트: Vitest + @testing-library/react + msw
-- DB: Postgres. 스키마 변경은 마이그레이션 파일로만.
+- DB: Postgres. 스키마 변경은 마이그레이션 파일로만 — `node-pg-migrate` + 손으로 쓴 `.sql` 파일이 유일한 소스(ORM 스키마 DSL 도입 안 함, `packages/db/migrations/`). 로컬 개발은 루트 `docker-compose.yml`(더미 자격증명, 실 시크릿 아님).
 
 ## 자주 하는 실수 방지
 - `statUpdDt`는 `YYYYMMDDHHmmss` KST 문자열이다. Date 파싱 시 타임존 명시 필수.

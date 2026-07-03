@@ -27,7 +27,7 @@ describe("runFullSync", () => {
     expect(result).toMatchObject({
       completed: true,
       pagesFetched: 1,
-      stationsUpserted: 10,
+      stationsUpserted: 8, // getChargerInfo-normal.xml: 10건 중 2개 충전소가 충전기 2대씩(중복 statId) → 고유 station 8개
       chargersUpserted: 10,
     });
     expect(queryCalls.length).toBeGreaterThan(0);

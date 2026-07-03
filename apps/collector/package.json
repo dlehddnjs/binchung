@@ -12,6 +12,10 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@binchung/core": "workspace:*"
+    "@binchung/core": "workspace:*",
+    "@binchung/db": "workspace:*"
+  },
+  "devDependencies": {
+    "msw": "^2.14.6"
   }
 }

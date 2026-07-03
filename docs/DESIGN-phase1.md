@@ -35,6 +35,7 @@
 - ✅ **실호출 검증 완료 (2026-07-03)**: `statId`/`chgerId` 없이 `period`+`zcode`만으로 목록 조회 성공 확인 (`period=10&zcode=11&numOfRows=10` → `resultCode=00`, `totalCount=1706`). 가이드의 필수(1) 표기는 오기로 확정.
 - ✅ **`zcode`도 생략 가능, 전국 단일 조회 지원 확정**: `zcode` 없이 `period=10&numOfRows=10`만으로 호출 → `resultCode=00`, `totalCount=11800`(전국, 10분 윈도우). 시도코드 순회(17개 zcode 반복 호출) 불필요 — 델타 폴링은 zcode 없이 **단일 요청**으로 전국을 커버한다. → §3 트래픽 예산 표 갱신 완료.
 - ⚠️ **API 자체의 안정성이 낮음 — numOfRows 크기 문제로 단정할 수 없음.** 최초 관찰(2026-07-03 오전)에서는 동일 조건(`period=10&zcode=11`)에서 `numOfRows=100`만 504 Gateway Timeout, `numOfRows=10`은 성공 → "numOfRows 크기가 원인"으로 잠정 결론했었음. 그런데 같은 날 재검증 시도에서 `numOfRows=30`, `20`, 그리고 **이전에 성공했던 10과 zcode=11 getChargerInfo 정상 조합까지 전부 30초 완전 타임아웃**으로 실패 (4연속). 즉 numOfRows 값과 무관하게 서비스 자체가 간헐적으로 응답하지 않는 것으로 보임. **결론 수정**: numOfRows 상한을 특정하는 실험은 이 API의 불안정성 앞에서 의미가 크지 않다 — 크기와 무관하게 타임아웃/504가 발생할 수 있다고 가정하고 설계한다. collector는 (a) 작은 numOfRows를 기본값으로 쓰되 크기가 만능 해결책이 아님을 인지, (b) 지수 백오프 재시도, (c) 한 주기 실패 시 다음 주기로 자연 복구(수집 실패를 심각한 장애로 취급하지 않음) 세 가지를 반드시 갖춘다. → §10 리스크 갱신.
+- ✅ **`getChargerInfo`도 `zcode` 생략 시 전국 단일 조회 지원 확정 (이슈 #5, 2026-07-03)**: `zcode` 없이 `numOfRows=10&pageNo=1` 호출(1차 타임아웃, 2차 재시도 성공) → `resultCode=00`, **`totalCount=530801`**(전국 충전기 레코드 수). zcode 순회 불필요 — full sync는 zcode 없이 단일 페이지네이션 루프로 전국을 커버한다(§3 갱신). 이 숫자는 `numOfRows` 선택에 직접적인 함의가 있다 — 아래 §3 참고.
 
 ### 상태 코드 (stat) ✅ 활용가이드 v1.23 확정
 | 코드 | 의미 | UI 색 |
@@ -69,7 +70,7 @@
 | 폴백: 10분 주기 델타 | 144회/일 × 1페이지 ≈ **144건/일** | ✅ 매우 여유 |
 
 **설계 결론:**
-1. **Full sync (getChargerInfo, 전국)**: 최초 1회 + 일 1회 심야(03시)에 정합성 보정용 재실행. 신규 충전소 반영 목적. (zcode=11 단독 `totalCount=75389`로 확인됨 — 예상보다 큰 수치라 전국 페이지 수는 별도 실측 필요, 델타 폴링만큼 예산에 치명적이진 않음: 1회성/일1회이므로)
+1. **Full sync (getChargerInfo, 전국)**: 최초 1회 + 일 1회 심야(03시)에 정합성 보정용 재실행. 신규 충전소 반영 목적. **✅ 전국 페이지 수 실측 완료(이슈 #5, 2026-07-03)**: zcode 생략, `totalCount=530801`. `numOfRows`를 최댓값(9999)에 가깝게 써야만 페이지 수가 실용적인 범위(≈54페이지)로 떨어진다 — `numOfRows=10`처럼 작은 값을 쓰면 53,081페이지가 되어 하루 예산(1000건)을 한 번의 full sync만으로 53배 초과한다. 즉 **full sync는 numOfRows=9999 사용이 사실상 강제**되고, 이는 §2에서 확인된 "API가 파라미터 크기와 무관하게 간헐적으로 타임아웃난다"는 리스크를 그대로 안고 간다는 뜻이다 — 재시도/부분실패 허용 설계(4번 항목)가 선택이 아니라 필수인 이유. 예산 영향: 54페이지 × (최초 1회 + 일 1회) ≈ **~108건/일**, 델타 폴링(288건/일)과 합쳐도 예산 내.
 2. **Delta poll (getChargerStatus, period=5, zcode 생략)**: 5분 주기, 전국 단일 요청. 변경된 충전기만 수신.
 3. 수집기는 **일일 요청 카운터**를 유지하고, 예산 90% 도달 시 주기를 10분으로 자동 완화 + 로그 경고.
 4. ⚠️ **블로커로 남은 리스크 (numOfRows 크기보다 심각함)**: §2 참고 — API가 파라미터 크기와 무관하게 간헐적으로 완전 타임아웃/504를 반환하는 것을 확인(같은 날 동일 조합도 성공→실패 반복). 즉 "안전한 numOfRows"를 찾는 문제가 아니라 **이 API 자체가 신뢰도 낮은 외부 의존성**이라는 전제로 설계해야 한다. 이 표의 "1페이지/288건" 예산 계산은 API가 응답한다는 전제하의 숫자이고, 실패율 자체는 별개로 다뤄야 한다. **이슈 #6(델타 폴링 구현) 요구사항에 반드시 포함**: 지수 백오프 재시도, 짧은 타임아웃(예: 10~15초)으로 빠르게 실패 판정, 한 주기 실패는 다음 주기로 자연 복구(알림은 연속 실패 N회 이상일 때만).
@@ -214,6 +215,7 @@ CREATE INDEX idx_history_charger_time ON status_history(stat_id, chger_id, recor
   - `getChargerStatus-normal.xml` (zcode=11, numOfRows=10, resultCode=00, totalCount=1706)
   - `getChargerStatus-error.xml` (zcode=11, numOfRows=100 → HTTP 504 Gateway Timeout, XML 아님)
   - `getChargerStatus-nozcode.xml` (zcode 생략, 전국, resultCode=00, totalCount=11800)
+  - `getChargerInfo-nozcode.xml` (zcode 생략, 전국, resultCode=00, totalCount=530801 — 이슈 #5)
   - `common-resultcode-error.synthetic.xml` **(synthetic, 실호출 아님)** — resultCode≠00 XML 에러를 실호출로 재현하지 못해(관측된 에러는 전부 401/504 비XML 인프라 실패) data.go.kr 공통 resultCode 표를 근거로 이슈 #2에서 수기 작성. 이슈 #2 §DESIGN 참고.
 - [ ] (나중에) 서비스 배포 후 활용사례 등록 → 운영계정 트래픽 증가 신청
 

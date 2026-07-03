@@ -6,6 +6,8 @@
   "main": "./dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:delta": "tsx watch src/deltaLoopMain.ts",
+    "start:delta-loop": "tsx src/deltaLoopMain.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest",

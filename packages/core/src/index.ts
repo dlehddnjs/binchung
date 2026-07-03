@@ -4,6 +4,7 @@ export { mapStatToUiStatus } from "./evcharger/mapStatToUiStatus.js";
 export { classifyChargerSpeed } from "./evcharger/classifyChargerSpeed.js";
 export { makeChargerKey } from "./evcharger/chargerKey.js";
 export { computeStatusDiff } from "./evcharger/computeStatusDiff.js";
+export { createRequestBudget } from "./evcharger/requestBudget.js";
 export type {
   ChargerInfoItem,
   ChargerSpeed,
@@ -16,3 +17,8 @@ export type {
   StatusDiffResult,
   UiChargerStatus,
 } from "./evcharger/types.js";
+export type {
+  RequestBudget,
+  RequestBudgetOptions,
+  RequestBudgetSnapshot,
+} from "./evcharger/requestBudget.js";

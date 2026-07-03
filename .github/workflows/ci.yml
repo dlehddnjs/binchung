@@ -8,6 +8,23 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          # 로컬 docker-compose와 동일한 CI 전용 더미 자격증명 — 실 시크릿 아님
+          POSTGRES_USER: binchung
+          POSTGRES_PASSWORD: binchung_dev_only_password
+          POSTGRES_DB: binchung
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U binchung -d binchung"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://binchung:binchung_dev_only_password@localhost:5432/binchung
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +40,8 @@ jobs:
       - run: pnpm -r lint
 
       - run: pnpm -r typecheck
+
+      - run: pnpm --filter @binchung/db migrate:up
 
       - run: pnpm -r test -- --run
 

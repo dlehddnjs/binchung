@@ -15,3 +15,23 @@ export interface ChargerRow {
   chgerType: string;
   outputKw: number | null;
 }
+
+export interface ChargerStatusKey {
+  statId: string;
+  chgerId: string;
+}
+
+export interface ChargerStatusRow {
+  statId: string;
+  chgerId: string;
+  stat: number;
+  statUpdDt: Date | null;
+}
+
+export interface StatusHistoryRow {
+  statId: string;
+  chgerId: string;
+  prevStat: number | null;
+  nextStat: number;
+  statUpdDt: Date | null;
+}

@@ -214,6 +214,7 @@ CREATE INDEX idx_history_charger_time ON status_history(stat_id, chger_id, recor
   - `getChargerStatus-normal.xml` (zcode=11, numOfRows=10, resultCode=00, totalCount=1706)
   - `getChargerStatus-error.xml` (zcode=11, numOfRows=100 → HTTP 504 Gateway Timeout, XML 아님)
   - `getChargerStatus-nozcode.xml` (zcode 생략, 전국, resultCode=00, totalCount=11800)
+  - `common-resultcode-error.synthetic.xml` **(synthetic, 실호출 아님)** — resultCode≠00 XML 에러를 실호출로 재현하지 못해(관측된 에러는 전부 401/504 비XML 인프라 실패) data.go.kr 공통 resultCode 표를 근거로 이슈 #2에서 수기 작성. 이슈 #2 §DESIGN 참고.
 - [ ] (나중에) 서비스 배포 후 활용사례 등록 → 운영계정 트래픽 증가 신청
 
 ---

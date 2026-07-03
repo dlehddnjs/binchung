@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm -r lint
+
+      - run: pnpm -r typecheck
+
+      - run: pnpm -r test -- --run
+
+      - run: pnpm -r build
+
+      - name: secret scan
+        run: |
+          if git grep -nE "serviceKey=[A-Za-z0-9%+/=]{20,}" -- ':!*.md'; then
+            echo "API 키로 보이는 문자열이 코드에 있습니다."
+            exit 1
+          fi

@@ -1,0 +1,17 @@
+{
+  "name": "@binchung/collector",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@binchung/core": "workspace:*"
+  }
+}

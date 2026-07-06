@@ -175,7 +175,13 @@ CREATE INDEX idx_history_charger_time ON status_history(stat_id, chger_id, recor
 ## 6. 웹 (Phase 1 스코프)
 
 - **페이지**: `/` 지도 단일 페이지. RSC에서 초기 스냅샷(뷰포트 or 전국 요약)을 fetch해 SSR → 클라이언트 컴포넌트(OpenLayers)에 주입.
-- **API Route**: `GET /api/chargers?bbox=&zcode=&type=&stat=` — DB 조회. bbox 기반 조회를 기본으로.
+- **API Route**: `GET /api/chargers?bbox=&zcode=&type=&stat=` — DB 조회. bbox 기반 조회를 기본으로. ✅ **계약 확정 완료(이슈 #7, 2026-07-06)**:
+  - `bbox`(필수): `minLng,minLat,maxLng,maxLat` — GeoJSON/OpenLayers extent 순서, **EPSG:4326(degree) 단위**. DB가 순수 lat/lng degree로 저장돼 있으므로(PostGIS 아님) 클라이언트(OpenLayers 기본 투영 EPSG:3857)가 `transformExtent`로 4326 변환 후 호출하는 계약. 누락/파싱실패/범위이탈(min>max, ±180/±90 초과) 시 400.
+  - `zcode`(옵션): `stations.zcode` 그대로 passthrough, 별도 검증 없음(공식 시도코드 목록이 코드베이스에 없음).
+  - `type`(옵션): `"fast"` \| `"slow"`만 허용 — `classifyChargerSpeed`(이슈 #3)의 결과값 재사용, `"unknown"`은 필터 카테고리가 아니므로 다른 값과 함께 400. 내부적으로 `chgerTypesForSpeed(speed)`가 원시 `chger_type` 코드 배열로 변환.
+  - `stat`(옵션): `"waiting"` \| `"charging"` \| `"other"`만 허용 — `mapStatToUiStatus`(이슈 #3) 버킷 재사용, 동일 이유로 `"unknown"` 배제. 내부적으로 `statsForUiStatus(status)`가 원시 `stat` 코드 배열로 변환.
+  - 응답: `{ chargers: ChargerMapRow[], truncated: boolean }` — `stat`/`chgerType`은 원시값 그대로 내려줌(분류는 소비 시점에 core 함수로, 이슈 #6까지의 "원시코드 저장 후 read-time 매핑" 패턴과 일치). 서버 내부 안전장치로 결과가 5000행을 넘으면 `truncated: true`(이 상한은 공개 쿼리 파라미터가 아님).
+  - `charger_status` 행이 없는 충전기(예: full sync 직후 첫 델타 폴링 전)는 INNER JOIN으로 결과에서 제외 — `charger_status`가 "지도 렌더링용 단일 소스"(§5)이므로 표시할 상태가 없으면 반환하지 않는다.
 - **지도**: OpenLayers `VectorLayer` + 표준 `Cluster` source로 시작. 줌 레벨별 스타일. **Phase 1 마지막에 전국 뷰 FPS/frame time을 기록해 둘 것 (Phase 3 before 수치).**
 - **상태관리 (jotai)**: `filterAtom`(지역/타입/상태), `viewportAtom`, `chargersAtom`. 지도 인스턴스는 atom에 넣지 않는다 (ref로 관리).
 - **UI**: 필터 바 + 지도 + 선택 시 하단 시트(충전소 상세: 충전기 목록/상태/갱신시각). 디자인은 심플하게 — Phase 1은 파이프라인이 주인공.

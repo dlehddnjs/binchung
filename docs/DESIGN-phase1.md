@@ -183,8 +183,41 @@ CREATE INDEX idx_history_charger_time ON status_history(stat_id, chger_id, recor
   - 응답: `{ chargers: ChargerMapRow[], truncated: boolean }` — `stat`/`chgerType`은 원시값 그대로 내려줌(분류는 소비 시점에 core 함수로, 이슈 #6까지의 "원시코드 저장 후 read-time 매핑" 패턴과 일치). 서버 내부 안전장치로 결과가 5000행을 넘으면 `truncated: true`(이 상한은 공개 쿼리 파라미터가 아님).
   - `charger_status` 행이 없는 충전기(예: full sync 직후 첫 델타 폴링 전)는 INNER JOIN으로 결과에서 제외 — `charger_status`가 "지도 렌더링용 단일 소스"(§5)이므로 표시할 상태가 없으면 반환하지 않는다.
 - **지도**: OpenLayers `VectorLayer` + 표준 `Cluster` source로 시작. 줌 레벨별 스타일. **Phase 1 마지막에 전국 뷰 FPS/frame time을 기록해 둘 것 (Phase 3 before 수치).**
-- **상태관리 (jotai)**: `filterAtom`(지역/타입/상태), `viewportAtom`, `chargersAtom`. 지도 인스턴스는 atom에 넣지 않는다 (ref로 관리).
+- **상태관리 (jotai)**: `filterAtom`(지역/타입/상태 — 이슈 #9), `viewportAtom`, `chargersAtom`(이슈 #8). 지도 인스턴스는 atom에 넣지 않는다 (ref로 관리).
 - **UI**: 필터 바 + 지도 + 선택 시 하단 시트(충전소 상세: 충전기 목록/상태/갱신시각). 디자인은 심플하게 — Phase 1은 파이프라인이 주인공.
+
+### `StatusFeed` 인터페이스 ✅ 계약 확정(이슈 #8, 2026-07-06)
+
+CLAUDE.md 기술 결정 "Phase 2에서 `StatusFeed` 인터페이스 뒤로 WebSocket 교체 예정 — 이 추상을 우회하지 마라"를 구체화. `apps/web/lib/statusFeed/chargersFeedTypes.ts`에 프레임워크-비의존 계약을 정의하고, `@tanstack/react-query`를 아는 코드는 이 계약을 구현하는 `useChargersFeed.ts` 단 하나로 제한한다:
+
+```ts
+export interface BboxLngLat { minLng: number; minLat: number; maxLng: number; maxLat: number }
+export interface ChargersFeedParams {
+  bbox: BboxLngLat;
+  zcode?: string;                                // 이슈 #9 filterAtom 대비 필드 선점, #8은 미사용
+  chgerType?: "fast" | "slow";
+  stat?: "waiting" | "charging" | "other";
+}
+export interface ChargersFeedState {
+  chargers: ChargerMapRow[];
+  truncated: boolean;
+  status: "loading" | "success" | "error";
+  error: Error | null;
+  isFetching: boolean;
+}
+export type UseChargersFeed = (
+  params: ChargersFeedParams,
+  options?: { initialData?: { chargers: ChargerMapRow[]; truncated: boolean } },
+) => ChargersFeedState;
+```
+
+Phase 2는 동일 시그니처의 `useChargersFeed.websocket.ts`로 내부만 교체 — 호출부(`ChargerMap`)는 변경 없음. Phase 1 구현은 TanStack Query `useQuery`에 `refetchInterval: 60_000` + `staleTime: 60_000`을 함께 지정(SSR `initialData`를 마운트 직후 바로 stale 취급해 재요청하지 않고, 60초 주기로만 갱신).
+
+**atom 경계**: `useChargersFeed`는 jotai를 전혀 모르는 순수 훅("params in, state out")으로 유지해 상태관리 선택과 독립시킨다. `viewportAtom`(OL `moveend`가 유일한 writer)과 `chargersAtom`(이슈 #9 상세 시트가 훅 재호출 없이 구독할 read-model)만 이슈 #8에서 도입 — `filterAtom`(지역/타입/상태 필터바)은 이슈 #9로 미룬다.
+
+**클러스터 색상 단순화**: 클러스터의 대표색은 `dominantUiStatus(멤버 상태들)`(개수 우선, 동률 시 waiting>charging>other>unknown)로 하나만 고른다. 혼합 상태 클러스터의 비율 표시(파이/도넛 등)는 Phase 1 스코프("지도에 점이 뜬다") 밖 — 실사용에서 시각적으로 혼란스러운 것으로 확인되면 이후 이슈에서 재검토.
+
+**RSC 초기 스냅샷**: `page.tsx`는 `/api/chargers`를 자기 자신에 대해 fetch하지 않고 `selectChargersInBbox`를 직접 호출(대한민국 전역을 대략 커버하는 고정 bbox 상수 사용, 정밀 GIS 경계 아님). DB 연결 실패 시 빈 목록으로 폴백해 로컬에 DB가 없어도 페이지는 항상 렌더된다. RSC 내부의 `pool.query()` 호출은 Next의 정적/동적 렌더링 분석에 잡히지 않으므로 `export const dynamic = "force-dynamic"`을 명시해야 한다(없으면 빌드 시점 DB 스냅샷이 정적 페이지로 굳어버림 — 이슈 #7의 `route.ts`와 동일한 이유). 이 초기 데이터는 TanStack Query의 `initialData`로만 흘려보내고, 풀 `dehydrate`/`HydrationBoundary` SSR 장치는 쓰지 않는다(쿼리가 하나뿐인 페이지엔 과함).
 
 ---
 

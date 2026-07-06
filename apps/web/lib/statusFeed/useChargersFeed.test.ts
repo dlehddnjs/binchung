@@ -78,13 +78,15 @@ describe("useChargersFeed", () => {
       }),
     );
 
+    vi.useFakeTimers();
     const { result } = renderHook(() => useChargersFeed({ bbox: BBOX }), {
       wrapper: createWrapper(),
     });
-    await waitFor(() => expect(result.current.status).toBe("success"));
+
+    await vi.advanceTimersByTimeAsync(0);
+    expect(result.current.status).toBe("success");
     expect(callCount).toBe(1);
 
-    vi.useFakeTimers();
     await vi.advanceTimersByTimeAsync(60_000);
 
     expect(callCount).toBe(2);

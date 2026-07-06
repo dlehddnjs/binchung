@@ -9,3 +9,7 @@ export function classifyChargerSpeed(chgerType: string): ChargerSpeed {
   if (FAST.has(trimmed)) return "fast";
   return "unknown";
 }
+
+export function chgerTypesForSpeed(speed: Exclude<ChargerSpeed, "unknown">): string[] {
+  return Array.from(speed === "fast" ? FAST : SLOW);
+}

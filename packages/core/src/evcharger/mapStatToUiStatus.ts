@@ -10,3 +10,9 @@ export function mapStatToUiStatus(stat: number): UiChargerStatus {
   if (OTHER.has(stat)) return "other";
   return "unknown";
 }
+
+export function statsForUiStatus(status: Exclude<UiChargerStatus, "unknown">): number[] {
+  if (status === "waiting") return Array.from(WAITING);
+  if (status === "charging") return Array.from(CHARGING);
+  return Array.from(OTHER);
+}

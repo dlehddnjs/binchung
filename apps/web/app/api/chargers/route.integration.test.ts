@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { closePool } from "../../../lib/db.js";
-import { GET } from "./route.js";
+import { closePool } from "../../../lib/db";
+import { GET } from "./route";
 
 const databaseUrl = process.env.DATABASE_URL;
 const STAT_ID = "TEST_ROUTE_CHARGERS";

@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import { describe, expect, it, vi } from "vitest";
-import { handleChargersRequest } from "./handleChargersRequest.js";
+import { handleChargersRequest } from "./handleChargersRequest";
 
 function createFakePool(rows: unknown[] = []): { pool: Pool; queryCalls: unknown[][] } {
   const queryCalls: unknown[][] = [];

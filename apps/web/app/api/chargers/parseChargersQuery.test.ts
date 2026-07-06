@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseChargersQuery } from "./parseChargersQuery.js";
+import { parseChargersQuery } from "./parseChargersQuery";
 
 function params(query: string): URLSearchParams {
   return new URLSearchParams(query);

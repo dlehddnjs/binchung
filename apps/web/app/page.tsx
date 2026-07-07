@@ -1,5 +1,7 @@
 import { selectChargersInBbox } from "@binchung/db";
 import { ChargerMap } from "../components/ChargerMap";
+import { DetailSheet } from "../components/DetailSheet";
+import { FilterBar } from "../components/FilterBar";
 import { getPool } from "../lib/db";
 import { KOREA_BBOX_FILTER } from "../lib/map/koreaBbox";
 
@@ -12,6 +14,8 @@ export default async function Home() {
   return (
     <main style={{ position: "absolute", inset: 0 }}>
       <ChargerMap initialChargers={rows} initialTruncated={truncated} />
+      <FilterBar />
+      <DetailSheet />
     </main>
   );
 }

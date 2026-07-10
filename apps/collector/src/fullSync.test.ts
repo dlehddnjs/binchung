@@ -48,6 +48,27 @@ describe("runFullSync", () => {
     });
   });
 
+  it("페이지 안에 skip되는 항목이 있어 numOfRows보다 파싱된 개수가 적어도, 원본 행 수가 꽉 찼으면 다음 페이지를 마저 가져온다", async () => {
+    const { pool } = createFakePool();
+    const page1 = `<?xml version="1.0" encoding="UTF-8"?><response><header><resultCode>00</resultCode><resultMsg>OK</resultMsg><totalCount>2</totalCount><pageNo>1</pageNo><numOfRows>2</numOfRows></header><body><items>
+<item><statId>P1_A</statId><chgerId>01</chgerId><statNm>A</statNm><addr>addr</addr><lat>37.1</lat><lng>127.1</lng><zcode>11</zcode><useTime></useTime><busiNm>b</busiNm><chgerType>02</chgerType><stat>2</stat><statUpdDt>20260101000000</statUpdDt></item>
+<item><chgerId>02</chgerId><statNm>B</statNm><addr>addr</addr><lat>37.2</lat><lng>127.2</lng><zcode>11</zcode><useTime></useTime><busiNm>b</busiNm><chgerType>02</chgerType><stat>2</stat><statUpdDt>20260101000000</statUpdDt></item>
+</items></body></response>`;
+    const page2 = `<?xml version="1.0" encoding="UTF-8"?><response><header><resultCode>00</resultCode><resultMsg>OK</resultMsg><totalCount>1</totalCount><pageNo>2</pageNo><numOfRows>2</numOfRows></header><body><items>
+<item><statId>P1_C</statId><chgerId>01</chgerId><statNm>C</statNm><addr>addr</addr><lat>37.3</lat><lng>127.3</lng><zcode>11</zcode><useTime></useTime><busiNm>b</busiNm><chgerType>02</chgerType><stat>2</stat><statUpdDt>20260101000000</statUpdDt></item>
+</items></body></response>`;
+    const source: ChargerInfoSource = {
+      fetchPage: vi.fn(async ({ pageNo }) => (pageNo === 1 ? page1 : page2)),
+    };
+    const budget = createRequestBudget();
+
+    const result = await runFullSync({ source, pool, budget, numOfRows: 2 });
+
+    // page1은 2건 요청에 1건만 파싱 성공(1건은 statId 누락으로 skip)했지만,
+    // 원본 행 수(2)는 numOfRows(2)만큼 꽉 찼으므로 page2까지 이어서 가져와야 한다.
+    expect(result).toMatchObject({ completed: true, pagesFetched: 2, stationsUpserted: 2, chargersUpserted: 2 });
+  });
+
   it("fetch가 계속 실패하면 fetch_failed로 부분 완료를 보고한다", async () => {
     const { pool } = createFakePool();
     const failingSource: ChargerInfoSource = {

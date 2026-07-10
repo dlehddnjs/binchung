@@ -83,7 +83,7 @@ export async function runFullSync(deps: FullSyncDeps): Promise<FullSyncResult> {
         `zcode=${zcode ?? "전국"} page=${pageNo}: ${parseResult.items.length}건 처리 (skipped=${parseResult.skipped.length})`,
       );
 
-      if (parseResult.items.length < numOfRows) {
+      if (parseResult.items.length + parseResult.skipped.length < numOfRows) {
         break;
       }
       pageNo += 1;

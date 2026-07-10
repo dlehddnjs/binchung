@@ -101,7 +101,7 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
     pagesFetched += 1;
     incoming.push(...parseResult.items);
 
-    if (parseResult.items.length < numOfRows) {
+    if (parseResult.items.length + parseResult.skipped.length < numOfRows) {
       break;
     }
     pageNo += 1;

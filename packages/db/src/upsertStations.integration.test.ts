@@ -60,6 +60,24 @@ describe.skipIf(!databaseUrl)("upsertStations", () => {
     await expect(upsertStations(pool, [])).resolves.not.toThrow();
   });
 
+  test("같은 배치 안에 같은 stat_id가 두 번 들어와도 에러 없이 마지막 값으로 upsert된다", async () => {
+    const base: StationRow = {
+      statId: "TEST_UPSERT_3",
+      name: "이름1",
+      addr: null,
+      lat: 37.0,
+      lng: 127.0,
+      zcode: "11",
+      useTime: null,
+      busiNm: null,
+    };
+    await expect(upsertStations(pool, [base, { ...base, name: "이름2" }])).resolves.not.toThrow();
+
+    const result = await pool.query("SELECT * FROM stations WHERE stat_id = $1", ["TEST_UPSERT_3"]);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.name).toBe("이름2");
+  });
+
   test("chunkSize보다 많은 행도 전부 upsert된다", async () => {
     const rows: StationRow[] = Array.from({ length: 5 }, (_, i) => ({
       statId: `TEST_UPSERT_CHUNK_${i}`,

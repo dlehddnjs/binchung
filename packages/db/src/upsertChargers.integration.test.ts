@@ -56,4 +56,20 @@ describe.skipIf(!databaseUrl)("upsertChargers", () => {
   test("빈 배열이면 아무것도 하지 않는다", async () => {
     await expect(upsertChargers(pool, [])).resolves.not.toThrow();
   });
+
+  test("같은 배치 안에 같은 (stat_id, chger_id)가 두 번 들어와도 에러 없이 마지막 값으로 upsert된다", async () => {
+    await expect(
+      upsertChargers(pool, [
+        { statId: parentStatId, chgerId: "03", chgerType: "01", outputKw: null },
+        { statId: parentStatId, chgerId: "03", chgerType: "02", outputKw: 7 },
+      ]),
+    ).resolves.not.toThrow();
+
+    const result = await pool.query(
+      "SELECT * FROM chargers WHERE stat_id = $1 AND chger_id = $2",
+      [parentStatId, "03"],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.chger_type).toBe("02");
+  });
 });

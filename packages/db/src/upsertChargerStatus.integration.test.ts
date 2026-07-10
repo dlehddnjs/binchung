@@ -69,4 +69,20 @@ describe.skipIf(!databaseUrl)("upsertChargerStatus", () => {
   test("빈 배열이면 아무것도 하지 않는다", async () => {
     await expect(upsertChargerStatus(pool, [])).resolves.not.toThrow();
   });
+
+  test("같은 배치 안에 같은 키가 두 번 들어와도 에러 없이 마지막 값으로 upsert된다", async () => {
+    await expect(
+      upsertChargerStatus(pool, [
+        { statId: parentStatId, chgerId: "03", stat: 2, statUpdDt: null },
+        { statId: parentStatId, chgerId: "03", stat: 3, statUpdDt: null },
+      ]),
+    ).resolves.not.toThrow();
+
+    const result = await pool.query(
+      "SELECT stat FROM charger_status WHERE stat_id = $1 AND chger_id = $2",
+      [parentStatId, "03"],
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.stat).toBe(3);
+  });
 });

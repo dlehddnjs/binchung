@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import type { ChargerRow } from "./types.js";
-import type { UpsertOptions } from "./upsertStations.js";
+import { dedupeByKey, type UpsertOptions } from "./upsertStations.js";
 
 const COLUMNS = ["stat_id", "chger_id", "chger_type", "output_kw"] as const;
 
@@ -9,9 +9,10 @@ export async function upsertChargers(
   rows: ChargerRow[],
   opts: UpsertOptions = {},
 ): Promise<void> {
+  const deduped = dedupeByKey(rows, (row) => `${row.statId}:${row.chgerId}`);
   const chunkSize = opts.chunkSize ?? 500;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    await upsertChunk(pool, rows.slice(i, i + chunkSize));
+  for (let i = 0; i < deduped.length; i += chunkSize) {
+    await upsertChunk(pool, deduped.slice(i, i + chunkSize));
   }
 }
 

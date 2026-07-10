@@ -7,14 +7,28 @@ export interface UpsertOptions {
   chunkSize?: number;
 }
 
+/**
+ * 한 INSERT문에 같은 충돌키가 두 번 들어가면 Postgres가
+ * "ON CONFLICT DO UPDATE command cannot affect row a second time"로 에러를 던진다.
+ * 배치 안에서 마지막 값이 이기도록(순차 upsert와 동일한 의미) 미리 제거한다.
+ */
+export function dedupeByKey<T>(rows: T[], keyFn: (row: T) => string): T[] {
+  const byKey = new Map<string, T>();
+  for (const row of rows) {
+    byKey.set(keyFn(row), row);
+  }
+  return [...byKey.values()];
+}
+
 export async function upsertStations(
   pool: Pool,
   rows: StationRow[],
   opts: UpsertOptions = {},
 ): Promise<void> {
+  const deduped = dedupeByKey(rows, (row) => row.statId);
   const chunkSize = opts.chunkSize ?? 500;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    await upsertChunk(pool, rows.slice(i, i + chunkSize));
+  for (let i = 0; i < deduped.length; i += chunkSize) {
+    await upsertChunk(pool, deduped.slice(i, i + chunkSize));
   }
 }
 

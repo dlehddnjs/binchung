@@ -47,6 +47,7 @@ export function parseChargerInfoResponse(raw: string): ParseResult<ChargerInfoIt
       outputKw: toNumber(rawItem.output),
       stat,
       statUpdDt: normalizeNullableString(rawItem.statUpdDt) ?? "",
+      delYn: normalizeNullableString(rawItem.delYn) === "Y",
     });
   });
 

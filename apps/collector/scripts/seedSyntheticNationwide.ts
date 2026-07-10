@@ -101,6 +101,7 @@ async function main(): Promise<void> {
         chgerId,
         chgerType: pick(CHGER_TYPES),
         outputKw: pick([50, 100]),
+        delYn: false,
       });
       statuses.push({
         statId,

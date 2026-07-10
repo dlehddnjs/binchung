@@ -28,7 +28,7 @@ describe.skipIf(!databaseUrl)("upsertChargers", () => {
 
   test("새 charger를 insert한다", async () => {
     const rows: ChargerRow[] = [
-      { statId: parentStatId, chgerId: "01", chgerType: "06", outputKw: 50 },
+      { statId: parentStatId, chgerId: "01", chgerType: "06", outputKw: 50, delYn: false },
     ];
     await upsertChargers(pool, rows);
 
@@ -41,8 +41,12 @@ describe.skipIf(!databaseUrl)("upsertChargers", () => {
   });
 
   test("같은 (stat_id, chger_id)로 다시 upsert하면 덮어쓴다", async () => {
-    await upsertChargers(pool, [{ statId: parentStatId, chgerId: "02", chgerType: "01", outputKw: null }]);
-    await upsertChargers(pool, [{ statId: parentStatId, chgerId: "02", chgerType: "02", outputKw: 7 }]);
+    await upsertChargers(pool, [
+      { statId: parentStatId, chgerId: "02", chgerType: "01", outputKw: null, delYn: false },
+    ]);
+    await upsertChargers(pool, [
+      { statId: parentStatId, chgerId: "02", chgerType: "02", outputKw: 7, delYn: false },
+    ]);
 
     const result = await pool.query(
       "SELECT * FROM chargers WHERE stat_id = $1 AND chger_id = $2",
@@ -60,8 +64,8 @@ describe.skipIf(!databaseUrl)("upsertChargers", () => {
   test("같은 배치 안에 같은 (stat_id, chger_id)가 두 번 들어와도 에러 없이 마지막 값으로 upsert된다", async () => {
     await expect(
       upsertChargers(pool, [
-        { statId: parentStatId, chgerId: "03", chgerType: "01", outputKw: null },
-        { statId: parentStatId, chgerId: "03", chgerType: "02", outputKw: 7 },
+        { statId: parentStatId, chgerId: "03", chgerType: "01", outputKw: null, delYn: false },
+        { statId: parentStatId, chgerId: "03", chgerType: "02", outputKw: 7, delYn: false },
       ]),
     ).resolves.not.toThrow();
 
@@ -71,5 +75,25 @@ describe.skipIf(!databaseUrl)("upsertChargers", () => {
     );
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]?.chger_type).toBe("02");
+  });
+
+  test("del_yn을 저장하고, 다시 upsert하면 갱신된다", async () => {
+    await upsertChargers(pool, [
+      { statId: parentStatId, chgerId: "04", chgerType: "06", outputKw: null, delYn: false },
+    ]);
+    const first = await pool.query(
+      "SELECT del_yn FROM chargers WHERE stat_id = $1 AND chger_id = $2",
+      [parentStatId, "04"],
+    );
+    expect(first.rows[0]?.del_yn).toBe(false);
+
+    await upsertChargers(pool, [
+      { statId: parentStatId, chgerId: "04", chgerType: "06", outputKw: null, delYn: true },
+    ]);
+    const second = await pool.query(
+      "SELECT del_yn FROM chargers WHERE stat_id = $1 AND chger_id = $2",
+      [parentStatId, "04"],
+    );
+    expect(second.rows[0]?.del_yn).toBe(true);
   });
 });

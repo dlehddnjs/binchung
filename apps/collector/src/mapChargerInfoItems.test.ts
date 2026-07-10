@@ -17,6 +17,7 @@ function item(overrides: Partial<ChargerInfoItem> = {}): ChargerInfoItem {
     outputKw: 50,
     stat: 2,
     statUpdDt: "20260101000000",
+    delYn: false,
     ...overrides,
   };
 }
@@ -38,8 +39,14 @@ describe("mapChargerInfoItems", () => {
       },
     ]);
     expect(result.chargers).toEqual([
-      { statId: "S1", chgerId: "01", chgerType: "06", outputKw: 50 },
+      { statId: "S1", chgerId: "01", chgerType: "06", outputKw: 50, delYn: false },
     ]);
+  });
+
+  it("delYn=true인 item은 charger의 delYn:true로 매핑된다", () => {
+    const result = mapChargerInfoItems([item({ delYn: true })]);
+
+    expect(result.chargers[0]?.delYn).toBe(true);
   });
 
   it("같은 statId의 여러 충전기는 station 1건 + charger 여러 건으로 매핑한다", () => {

@@ -36,6 +36,7 @@ describe("parseChargerInfoResponse", () => {
       outputKw: 50,
       stat: 2,
       statUpdDt: "20260703104804",
+      delYn: false,
     });
   });
 
@@ -100,6 +101,24 @@ describe("parseChargerInfoResponse", () => {
     if (!result.ok) return;
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.stat).toBe(99);
+  });
+
+  it("delYn=Y인 항목은 delYn:true로 파싱한다", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><response><header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg><totalCount>1</totalCount><pageNo>1</pageNo><numOfRows>1</numOfRows></header><body><items><item><statId>X1</statId><chgerId>01</chgerId><lat>37.1</lat><lng>127.1</lng><stat>2</stat><delYn>Y</delYn></item></items></body></response>`;
+    const result = parseChargerInfoResponse(xml);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.items[0]?.delYn).toBe(true);
+  });
+
+  it("delYn이 없거나 Y/N이 아니면 delYn:false로 취급한다", () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><response><header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg><totalCount>1</totalCount><pageNo>1</pageNo><numOfRows>1</numOfRows></header><body><items><item><statId>X1</statId><chgerId>01</chgerId><lat>37.1</lat><lng>127.1</lng><stat>2</stat></item></items></body></response>`;
+    const result = parseChargerInfoResponse(xml);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.items[0]?.delYn).toBe(false);
   });
 
   it('리터럴 "null" 문자열과 빈 문자열 필드는 빈 문자열로 정규화한다', () => {

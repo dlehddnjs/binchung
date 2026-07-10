@@ -14,6 +14,7 @@ export interface ChargerRow {
   chgerId: string;
   chgerType: string;
   outputKw: number | null;
+  delYn: boolean;
 }
 
 export interface ChargerStatusKey {

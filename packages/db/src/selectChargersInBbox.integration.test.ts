@@ -121,6 +121,31 @@ describe.skipIf(!databaseUrl)("selectChargersInBbox", () => {
     expect(truncated).toBe(true);
   });
 
+  test("del_yn=true(철거된 충전기)인 충전기는 결과에서 제외된다", async () => {
+    const statId = "TEST_BBOX_DELYN";
+    await pool.query(
+      "INSERT INTO stations (stat_id, name, lat, lng, zcode) VALUES ($1, 'D', 37.55, 127.05, '11') ON CONFLICT (stat_id) DO NOTHING",
+      [statId],
+    );
+    await pool.query(
+      "INSERT INTO chargers (stat_id, chger_id, chger_type, del_yn) VALUES ($1, '01', '02', true) ON CONFLICT (stat_id, chger_id) DO NOTHING",
+      [statId],
+    );
+    await pool.query(
+      "INSERT INTO charger_status (stat_id, chger_id, stat, seen_at) VALUES ($1, '01', 2, now()) ON CONFLICT (stat_id, chger_id) DO NOTHING",
+      [statId],
+    );
+
+    try {
+      const { rows } = await selectChargersInBbox(pool, SEOUL_BBOX);
+      expect(rows.some((r) => r.statId === statId)).toBe(false);
+    } finally {
+      await pool.query("DELETE FROM charger_status WHERE stat_id = $1", [statId]);
+      await pool.query("DELETE FROM chargers WHERE stat_id = $1", [statId]);
+      await pool.query("DELETE FROM stations WHERE stat_id = $1", [statId]);
+    }
+  });
+
   test("반환된 row는 station/charger/status 필드를 전부 담는다", async () => {
     const { rows } = await selectChargersInBbox(pool, { ...SEOUL_BBOX, zcode: "11" });
     const a = rows.find((r) => r.statId === STAT_A && r.chgerId === "01");

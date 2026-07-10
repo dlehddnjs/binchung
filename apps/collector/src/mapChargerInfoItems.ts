@@ -27,6 +27,7 @@ export function mapChargerInfoItems(items: ChargerInfoItem[]): MappedChargerInfo
       chgerId: item.chgerId,
       chgerType: item.chgerType,
       outputKw: item.outputKw,
+      delYn: item.delYn,
     });
   }
 

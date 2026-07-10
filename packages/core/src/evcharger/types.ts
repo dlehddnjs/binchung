@@ -20,6 +20,7 @@ export interface ChargerInfoItem {
   outputKw: number | null;
   stat: number;
   statUpdDt: string;
+  delYn: boolean;
 }
 
 export interface ChargerStatusItem {

@@ -62,6 +62,7 @@ export async function selectChargersInBbox(
       AND ($5::text IS NULL OR s.zcode = $5)
       AND ($6::text[] IS NULL OR c.chger_type = ANY($6::text[]))
       AND ($7::smallint[] IS NULL OR cs.stat = ANY($7::smallint[]))
+      AND c.del_yn = false
     ORDER BY s.stat_id, c.chger_id
     LIMIT $8
     `,

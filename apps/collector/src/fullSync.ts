@@ -42,7 +42,7 @@ export async function runFullSync(deps: FullSyncDeps): Promise<FullSyncResult> {
 
     while (true) {
       const fetchResult = await fetchWithRetry(
-        () => deps.source.fetchPage({ pageNo, numOfRows, zcode }),
+        (signal) => deps.source.fetchPage({ pageNo, numOfRows, zcode }, signal),
         {
           budget: deps.budget,
           maxAttempts: deps.maxAttempts,

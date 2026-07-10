@@ -11,7 +11,7 @@ export function createLiveChargerInfoSource(options: LiveChargerInfoSourceOption
   const fetchImpl = options.fetchImpl ?? fetch;
 
   return {
-    async fetchPage(params: FetchPageParams): Promise<string> {
+    async fetchPage(params: FetchPageParams, signal?: AbortSignal): Promise<string> {
       const url = new URL(ENDPOINT);
       url.searchParams.set("serviceKey", options.serviceKey);
       url.searchParams.set("pageNo", String(params.pageNo));
@@ -20,7 +20,7 @@ export function createLiveChargerInfoSource(options: LiveChargerInfoSourceOption
         url.searchParams.set("zcode", params.zcode);
       }
 
-      const response = await fetchImpl(url);
+      const response = await fetchImpl(url, { signal });
       return response.text();
     },
   };

@@ -13,7 +13,7 @@ export function createLiveChargerStatusSource(
   const fetchImpl = options.fetchImpl ?? fetch;
 
   return {
-    async fetchPage(params: FetchStatusPageParams): Promise<string> {
+    async fetchPage(params: FetchStatusPageParams, signal?: AbortSignal): Promise<string> {
       const url = new URL(ENDPOINT);
       url.searchParams.set("serviceKey", options.serviceKey);
       url.searchParams.set("pageNo", String(params.pageNo));
@@ -23,7 +23,7 @@ export function createLiveChargerStatusSource(
         url.searchParams.set("zcode", params.zcode);
       }
 
-      const response = await fetchImpl(url);
+      const response = await fetchImpl(url, { signal });
       return response.text();
     },
   };

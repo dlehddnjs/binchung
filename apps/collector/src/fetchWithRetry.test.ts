@@ -62,6 +62,25 @@ describe("fetchWithRetry", () => {
     expect(result).toEqual({ ok: true, value: "ok", attempts: 2 });
   });
 
+  it("타임아웃되면 fn에 전달된 signal이 abort되어 실제 요청이 취소된다", async () => {
+    const budget = createRequestBudget({ dailyLimit: 10 });
+    let capturedSignal: AbortSignal | undefined;
+    const fn = vi
+      .fn()
+      .mockImplementationOnce((signal: AbortSignal) => {
+        capturedSignal = signal;
+        return new Promise(() => {
+          // 절대 resolve/reject 되지 않음 — 타임아웃으로만 끝나야 한다.
+        });
+      })
+      .mockResolvedValueOnce("ok");
+
+    const result = await fetchWithRetry(fn, { budget, sleep: noopSleep, timeoutMs: 10 });
+
+    expect(result).toEqual({ ok: true, value: "ok", attempts: 2 });
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
   it("각 재시도 사이에 지수 백오프로 sleep을 호출한다", async () => {
     const budget = createRequestBudget({ dailyLimit: 10 });
     const fn = vi.fn().mockRejectedValue(new Error("fail"));

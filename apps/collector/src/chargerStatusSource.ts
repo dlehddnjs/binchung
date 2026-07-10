@@ -6,5 +6,5 @@ export interface FetchStatusPageParams {
 }
 
 export interface ChargerStatusSource {
-  fetchPage(params: FetchStatusPageParams): Promise<string>;
+  fetchPage(params: FetchStatusPageParams, signal?: AbortSignal): Promise<string>;
 }

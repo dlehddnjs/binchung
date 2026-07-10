@@ -5,5 +5,5 @@ export interface FetchPageParams {
 }
 
 export interface ChargerInfoSource {
-  fetchPage(params: FetchPageParams): Promise<string>;
+  fetchPage(params: FetchPageParams, signal?: AbortSignal): Promise<string>;
 }

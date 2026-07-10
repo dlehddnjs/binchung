@@ -21,10 +21,19 @@ function defaultSleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+// 타임아웃 시 진행 중인 요청을 실제로 취소(abort)한다 — 그냥 다음 재시도로
+// 넘어가기만 하면 이전 요청이 백그라운드에 계속 남아 쌓인다.
+function withTimeout<T>(
+  fn: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+  controller: AbortController,
+): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms);
-    promise.then(
+    const timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`timeout after ${ms}ms`));
+    }, ms);
+    fn(controller.signal).then(
       (value) => {
         clearTimeout(timer);
         resolve(value);
@@ -38,7 +47,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function fetchWithRetry<T>(
-  fn: () => Promise<T>,
+  fn: (signal: AbortSignal) => Promise<T>,
   options: FetchWithRetryOptions,
 ): Promise<FetchWithRetryResult<T>> {
   const timeoutMs = options.timeoutMs ?? 12000;
@@ -56,7 +65,8 @@ export async function fetchWithRetry<T>(
     options.budget.recordRequest();
 
     try {
-      const value = await withTimeout(fn(), timeoutMs);
+      const controller = new AbortController();
+      const value = await withTimeout(fn, timeoutMs, controller);
       return { ok: true, value, attempts: attempt };
     } catch (error) {
       lastError = error;

@@ -35,9 +35,9 @@ const handle = startDeltaPollLoop({
 
 function shutdown(signal: string): void {
   console.log(`${signal} 수신 — 델타 폴링 루프 종료 중...`);
-  handle.stop();
-  pool
-    .end()
+  handle
+    .stop()
+    .then(() => pool.end())
     .catch((error: unknown) => console.error("pool 종료 중 에러:", error))
     .finally(() => process.exit(0));
 }

@@ -9,7 +9,8 @@ export interface DeltaPollLoopDeps {
 }
 
 export interface DeltaPollLoopHandle {
-  stop(): void;
+  /** 진행 중인 tick이 있으면 그게 끝날 때까지 기다린 뒤 resolve된다. */
+  stop(): Promise<void>;
 }
 
 const DEFAULT_NORMAL_INTERVAL_MS = 5 * 60 * 1000;
@@ -22,15 +23,23 @@ export function startDeltaPollLoop(deps: DeltaPollLoopDeps): DeltaPollLoopHandle
 
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // 진행 중인 tick의 Promise — stop()이 pool.end() 전에 이 tick의 DB 쓰기가
+  // 끝나길 기다릴 수 있게 추적한다.
+  let currentTick: Promise<void> | null = null;
 
   async function tickAndSchedule(): Promise<void> {
     if (stopped) return;
 
-    try {
-      await deps.tick();
-    } catch (error) {
-      logger.error("델타 폴링 tick에서 예기치 못한 에러:", error);
-    }
+    const tickPromise = (async () => {
+      try {
+        await deps.tick();
+      } catch (error) {
+        logger.error("델타 폴링 tick에서 예기치 못한 에러:", error);
+      }
+    })();
+    currentTick = tickPromise;
+    await tickPromise;
+    currentTick = null;
 
     if (stopped) return;
 
@@ -50,9 +59,10 @@ export function startDeltaPollLoop(deps: DeltaPollLoopDeps): DeltaPollLoopHandle
   }, 0);
 
   return {
-    stop(): void {
+    stop(): Promise<void> {
       stopped = true;
       if (timer) clearTimeout(timer);
+      return currentTick ?? Promise.resolve();
     },
   };
 }

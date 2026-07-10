@@ -15,6 +15,24 @@ describe("extent3857ToBboxLngLat", () => {
     expect(bbox.maxLng).toBeCloseTo(129.2, 6);
     expect(bbox.maxLat).toBeCloseTo(37.4, 6);
   });
+
+  it("세계 경계(±180°/±90°)를 넘는 extent도 유효 범위로 clamp된다", () => {
+    // OL View에 extent/minZoom 제한이 없어 평범하게 축소·드래그해도 이런 extent가 나올 수 있다.
+    const worldHalfWidth = 20037508.342789244; // EPSG:3857에서 경도 ±180°에 해당하는 x
+    const extent: [number, number, number, number] = [
+      -worldHalfWidth * 1.2,
+      -3000000,
+      worldHalfWidth * 1.2,
+      3000000,
+    ];
+
+    const bbox = extent3857ToBboxLngLat(extent);
+
+    expect(bbox.minLng).toBeGreaterThanOrEqual(-180);
+    expect(bbox.maxLng).toBeLessThanOrEqual(180);
+    expect(bbox.minLat).toBeGreaterThanOrEqual(-90);
+    expect(bbox.maxLat).toBeLessThanOrEqual(90);
+  });
 });
 
 describe("bboxLngLatToQueryParam", () => {

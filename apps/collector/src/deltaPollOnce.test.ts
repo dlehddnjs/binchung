@@ -69,6 +69,41 @@ describe("runDeltaPollOnce", () => {
     expect(result).toMatchObject({ completed: true, pagesFetched: 2, incomingCount: 2 });
   });
 
+  it("1페이지가 성공하고 2페이지가 실패해도, 이미 받은 1페이지 데이터는 diff/적재된다", async () => {
+    const { pool, queryCalls } = createFakePool();
+    const page1 = `<?xml version="1.0" encoding="UTF-8"?><response><header><resultCode>00</resultCode><resultMsg>OK</resultMsg><totalCount>1</totalCount><pageNo>1</pageNo><numOfRows>1</numOfRows></header><body><items>
+<item><statId>P_OK</statId><chgerId>01</chgerId><stat>2</stat><statUpdDt>20260101000000</statUpdDt></item>
+</items></body></response>`;
+    const source: ChargerStatusSource = {
+      fetchPage: vi.fn(async ({ pageNo }) => {
+        if (pageNo === 1) return page1;
+        throw new Error("network fail");
+      }),
+    };
+    const budget = createRequestBudget();
+
+    const result = await runDeltaPollOnce({
+      source,
+      pool,
+      budget,
+      numOfRows: 1,
+      maxAttempts: 1,
+      sleep: async () => {},
+    });
+
+    // 2페이지가 실패했으니 completed:false로 정직하게 보고하되, 1페이지에서 이미
+    // 받은 데이터(1건)는 버리지 않고 diff/적재까지 마쳐야 한다.
+    expect(result).toMatchObject({
+      completed: false,
+      stoppedReason: "fetch_failed",
+      pagesFetched: 1,
+      incomingCount: 1,
+      newCount: 1,
+    });
+    const wroteStatus = queryCalls.some(([sql]) => String(sql).includes("INSERT INTO charger_status"));
+    expect(wroteStatus).toBe(true);
+  });
+
   it("fetch가 계속 실패하면 fetch_failed로 부분 완료를 보고한다", async () => {
     const { pool } = createFakePool();
     const failingSource: ChargerStatusSource = {

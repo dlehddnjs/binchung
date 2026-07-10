@@ -49,17 +49,19 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
   const incoming: ChargerStatusItem[] = [];
   let pagesFetched = 0;
   let pageNo = 1;
-  let hitMaxPages = false;
+  let completed = true;
+  let stoppedReason: DeltaPollResult["stoppedReason"];
 
   while (true) {
     if (pagesFetched >= maxPages) {
-      hitMaxPages = true;
+      completed = false;
+      stoppedReason = "max_pages_exceeded";
       logger.warn(`델타 폴링 maxPages(${maxPages}) 도달 — 이번 tick은 여기까지만 처리`);
       break;
     }
 
     const fetchResult = await fetchWithRetry(
-      () => deps.source.fetchPage({ pageNo, numOfRows, period, zcode: deps.zcode }),
+      (signal) => deps.source.fetchPage({ pageNo, numOfRows, period, zcode: deps.zcode }, signal),
       {
         budget: deps.budget,
         maxAttempts: deps.maxAttempts,
@@ -70,32 +72,18 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
     );
 
     if (!fetchResult.ok) {
-      const stoppedReason =
-        fetchResult.reason === "budget_exhausted" ? "budget_exhausted" : "fetch_failed";
+      completed = false;
+      stoppedReason = fetchResult.reason === "budget_exhausted" ? "budget_exhausted" : "fetch_failed";
       logger.error(`델타 폴링 중단 (page=${pageNo}): ${fetchResult.reason}`);
-      return {
-        pagesFetched,
-        incomingCount: incoming.length,
-        changedCount: 0,
-        unchangedCount: 0,
-        newCount: 0,
-        completed: false,
-        stoppedReason,
-      };
+      break;
     }
 
     const parseResult = parseChargerStatusResponse(fetchResult.value);
     if (!parseResult.ok) {
+      completed = false;
+      stoppedReason = "parse_failed";
       logger.error(`델타 파싱 실패 (page=${pageNo}): ${parseResult.error.type}`);
-      return {
-        pagesFetched,
-        incomingCount: incoming.length,
-        changedCount: 0,
-        unchangedCount: 0,
-        newCount: 0,
-        completed: false,
-        stoppedReason: "parse_failed",
-      };
+      break;
     }
 
     pagesFetched += 1;
@@ -107,6 +95,8 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
     pageNo += 1;
   }
 
+  // 페이지 도중 실패해도, 그때까지 이미 받은 페이지의 데이터는 버리지 않고
+  // 반드시 diff/적재한다 — completed/stoppedReason으로 부분 완료임만 정직하게 보고.
   if (incoming.length === 0) {
     return {
       pagesFetched,
@@ -114,8 +104,8 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
       changedCount: 0,
       unchangedCount: 0,
       newCount: 0,
-      completed: !hitMaxPages,
-      stoppedReason: hitMaxPages ? "max_pages_exceeded" : undefined,
+      completed,
+      stoppedReason,
     };
   }
 
@@ -139,7 +129,7 @@ export async function runDeltaPollOnce(deps: DeltaPollDeps): Promise<DeltaPollRe
     changedCount: diff.changed.length,
     unchangedCount: diff.unchanged.length,
     newCount: diff.new.length,
-    completed: !hitMaxPages,
-    stoppedReason: hitMaxPages ? "max_pages_exceeded" : undefined,
+    completed,
+    stoppedReason,
   };
 }

@@ -88,4 +88,19 @@ describe("handleChargersRequest", () => {
     expect(sqlParams[5]).toEqual(expect.arrayContaining(["04"])); // fast codes
     expect(sqlParams[6]).toEqual([2]); // waiting
   });
+
+  it("DB 조회가 실패하면 던지지 않고 500 + 에러 JSON을 반환한다", async () => {
+    const pool = {
+      query: vi.fn(async () => {
+        throw new Error("connection refused");
+      }),
+    } as unknown as Pool;
+    const request = new Request("http://localhost/api/chargers?bbox=126.9,37.4,127.2,37.7");
+
+    const response = await handleChargersRequest(request, { pool });
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBeDefined();
+  });
 });

@@ -17,7 +17,11 @@ export async function handleChargersRequest(
     return Response.json({ error: parsed.error }, { status: 400 });
   }
 
-  const { rows, truncated } = await selectChargersInBbox(deps.pool, parsed.filter);
-
-  return Response.json({ chargers: rows, truncated });
+  try {
+    const { rows, truncated } = await selectChargersInBbox(deps.pool, parsed.filter);
+    return Response.json({ chargers: rows, truncated });
+  } catch (error) {
+    console.error("/api/chargers DB 조회 실패:", error);
+    return Response.json({ error: "internal_error" }, { status: 500 });
+  }
 }

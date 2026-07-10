@@ -4,7 +4,7 @@ import { upsertChargerStatus } from "./upsertChargerStatus.js";
 import type { ChargerStatusRow } from "./types.js";
 
 const databaseUrl = process.env.DATABASE_URL;
-const parentStatId = "TEST_UPSERT_STATUS_PARENT";
+const parentStatId = "TEST_STATUS_PARENT";
 
 describe.skipIf(!databaseUrl)("upsertChargerStatus", () => {
   const pool = new Pool({ connectionString: databaseUrl });

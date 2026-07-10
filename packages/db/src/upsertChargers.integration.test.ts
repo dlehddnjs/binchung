@@ -7,7 +7,7 @@ const databaseUrl = process.env.DATABASE_URL;
 
 describe.skipIf(!databaseUrl)("upsertChargers", () => {
   const pool = new Pool({ connectionString: databaseUrl });
-  const parentStatId = "TEST_UPSERT_CHARGER_PARENT";
+  const parentStatId = "TEST_CHARGER_PARENT";
 
   beforeAll(async () => {
     await pool.query(
